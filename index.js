@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 // YOUR 5 IMAGES - REPLACE WITH YOUR ACTUAL IMAGE URLS
-const images = ["https://imgur.com/a/yVebMyr", "https://imgur.com/a/cbo6ok3"];
+const images = ["https://i.imgur.com/08uOzOL.jpeg", "https://i.imgur.com/ioavSi6.jpeg"];
 
 // Main metadata endpoint
 app.get("/metadata", (req, res) => {
