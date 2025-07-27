@@ -1,98 +1,89 @@
 const express = require("express");
 const cors = require("cors");
+const https = require('https');
+const http = require('http');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
 
-// YOUR 5 IMAGES - REPLACE WITH YOUR ACTUAL IMAGE URLS
-const images = ["https://imgur.com/a/yVebMyr", "https://imgur.com/a/cbo6ok3"];
+// YOUR IMAGE URLS - Replace with your actual direct image URLs
+const images = [
+  "https://i.postimg.cc/T2czZRGL/c75db7323801421faafb260c65a45300.png",  // Replace with your actual direct image URLs
+  "https://i.postimg.cc/zG46nvwM/GNVF1-P5-X0-AABLJc.png",  // These MUST be direct image links ending in .png, .jpg, etc.
+  "https://i.postimg.cc/prV62Fx9/IMG-0110.png",
+  "https://i.postimg.cc/d3WSDVt5/8btmhq88z5s71.png",
+  "https://i.postimg.cc/59PPBjb3/13ny-squirrel-jzgv-article-Large.png"
+];
 
-// Keep-alive function to prevent sleeping
-function keepAlive() {
-  setInterval(() => {
-    // Ping own health endpoint every 14 minutes
-    fetch(`https://laughing-disco.onrender.com/health`)
-      .then(() => console.log('🏓 Keep-alive ping sent'))
-      .catch(() => console.log('🚫 Keep-alive ping failed'));
-  }, 14 * 60 * 1000); // 14 minutes
-}
-
-// Main metadata endpoint
-app.get("/metadata", (req, res) => {
+// Function to fetch and serve image
+function serveRandomImage(req, res) {
   try {
     // Pick random image
-    const randomImage = images[Math.floor(Math.random() * images.length)];
-    
-    // Return exact same format as your current metadata
-    const metadata = {
-      name: "ArblikesdickCoin",
-      symbol: "Arbdick",
-      uri: randomImage,
-      sellerFeeBasisPoints: 0,
-      creators: [
-        {
-          address: "WLHv2UAZm6z4KyaaELi5pjdbJh6RESMva1Rnn8pJVVh",
-          verified: 1,
-          share: 100,
-        },
-      ],
-    };
-    
-    // Prevent caching
-    res.set({
-      "Cache-Control": "no-cache, no-store, must-revalidate",
-      "Pragma": "no-cache",
-      "Expires": "0",
-      "Content-Type": "application/json",
-    });
-    
-    console.log(`Serving random image: ${randomImage}`);
-    res.json(metadata);
-    
-  } catch (error) {
-    console.error('Error in /metadata:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+    const randomImageUrl = images[Math.floor(Math.random() * images.length)];
+    console.log(`🎲 Serving random image: ${randomImageUrl}`);
 
-// Health check
+    // Determine if it's http or https
+    const client = randomImageUrl.startsWith('https://') ? https : http;
+
+    // Fetch the image
+    client.get(randomImageUrl, (imageRes) => {
+      // Set headers to serve as image
+      res.set({
+        'Content-Type': imageRes.headers['content-type'] || 'image/png',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+
+      // Pipe the image data directly to response
+      imageRes.pipe(res);
+      
+    }).on('error', (error) => {
+      console.error('❌ Error fetching image:', error);
+      res.status(500).send('Error loading image');
+    });
+
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).send('Server error');
+  }
+}
+
+// Main endpoint - just returns a random image
+app.get("/", serveRandomImage);
+app.get("/image", serveRandomImage);
+app.get("/random", serveRandomImage);
+
+// Health check (returns JSON)
 app.get("/health", (req, res) => {
   res.json({ 
     status: "ok", 
     images: images.length,
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    timestamp: new Date().toISOString()
   });
 });
 
-// Root endpoint
-app.get("/", (req, res) => {
+// Info endpoint
+app.get("/info", (req, res) => {
   res.json({
-    message: "ArblikesdickCoin Dynamic Metadata Server",
-    endpoint: "/metadata",
-    status: "running"
-  });
-});
-
-// Handle 404s
-app.use((req, res) => {
-  res.status(404).json({
-    error: "Not found",
-    available: ["/", "/metadata", "/health"]
+    message: "ArblikesdickCoin Dynamic Image Server",
+    description: "Returns a random image on each request",
+    endpoints: {
+      "/": "Random image",
+      "/image": "Random image", 
+      "/random": "Random image",
+      "/health": "Health check",
+      "/info": "This info"
+    },
+    total_images: images.length
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📝 Metadata endpoint: /metadata`);
-  
-  // Start keep-alive after server starts
-  if (process.env.NODE_ENV === 'production') {
-    keepAlive();
-    console.log('🔄 Keep-alive started');
-  }
+  console.log(`🚀 Image server running on port ${PORT}`);
+  console.log(`🖼️  Serving ${images.length} random images`);
+  console.log(`📍 Main endpoint: / (returns random image)`);
 });
 
 module.exports = app;
